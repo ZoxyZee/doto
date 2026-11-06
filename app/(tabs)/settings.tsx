@@ -1,22 +1,27 @@
 import { useSQLiteContext } from 'expo-sqlite';
-import { useEffect } from 'react';
-import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { Alert, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { ActionButton } from '@/components/ActionButton';
 import { CloudAccount } from '@/components/CloudAccount';
 import { HabitCard } from '@/components/HabitCard';
 import { Screen } from '@/components/Screen';
 import { useHabitStore } from '@/store/useHabitStore';
 import { type, usePalette, useTheme, type ThemeMode } from '@/theme/colors';
+import { useProfile } from '@/profile/ProfileProvider';
 
 export default function Settings() {
   const palette = usePalette();
   const theme = useTheme();
+  const profile = useProfile();
+  const [nameDraft, setNameDraft] = useState(profile.name ?? '');
+  useEffect(() => { setNameDraft(profile.name ?? ''); }, [profile.name]);
   const db = useSQLiteContext();
   const archived = useHabitStore((state) => state.archived);
   const refresh = useHabitStore((state) => state.refresh);
   useEffect(() => { void refresh(db); }, [db, refresh, archived.length]);
   return <Screen><Text style={[styles.title, { color: palette.ink }]}>Your space.</Text><Text style={[styles.subtitle, { color: palette.muted }]}>The little things behind your days.</Text>
     <Text style={[styles.heading, { color: palette.ink }]}>Account</Text>
+    <View style={[styles.group, { borderColor: palette.line }]}><Text style={[styles.rowTitle, { color: palette.ink }]}>Your name</Text><TextInput accessibilityLabel="Your name" autoCapitalize="words" maxLength={32} value={nameDraft} onChangeText={setNameDraft} style={{ borderWidth: 1, borderColor: palette.line, backgroundColor: palette.surface, color: palette.ink, borderRadius: 12, minHeight: 46, paddingHorizontal: 13, marginTop: 10, fontFamily: type.medium, fontSize: 14 }} /><View style={{ marginTop: 12 }}><ActionButton label="Save name" secondary onPress={() => { void profile.setName(nameDraft).catch((cause) => Alert.alert('Could not save name', cause instanceof Error ? cause.message : 'Please try again.')); }} /></View></View>
     <CloudAccount />
     <Text style={[styles.heading, { color: palette.ink }]}>Preferences</Text>
     <View style={[styles.group, { borderColor: palette.line }]}><Text style={[styles.rowTitle, { color: palette.ink }]}>Appearance</Text><View style={styles.themeChoices}>{(['system', 'light', 'dark'] as ThemeMode[]).map((mode) => <Pressable key={mode} accessibilityRole="radio" accessibilityState={{ selected: theme?.mode === mode }} accessibilityLabel={`${mode === 'system' ? 'System' : mode === 'light' ? 'Light' : 'Dark'} theme`} onPress={() => { void theme?.setMode(mode).catch(() => Alert.alert('Could not save appearance', 'Please try again.')); }} style={[styles.themeChoice, { backgroundColor: theme?.mode === mode ? palette.purple : palette.surfaceMuted, borderColor: palette.line }]}><Text style={[styles.themeChoiceText, { color: theme?.mode === mode ? palette.onPrimary : palette.ink }]}>{mode === 'system' ? 'System' : mode === 'light' ? 'Light' : 'Dark'}</Text></Pressable>)}</View></View>

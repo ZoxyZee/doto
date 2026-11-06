@@ -9,6 +9,7 @@ import { CloudProvider } from '@/cloud/CloudProvider';
 import { migrateDatabase } from '@/database/migrations';
 import { useHabitStore } from '@/store/useHabitStore';
 import { ThemeProvider, usePalette, useResolvedTheme } from '@/theme/colors';
+import { ProfileProvider } from '@/profile/ProfileProvider';
 
 function AppStack() {
   const db = useSQLiteContext();
@@ -18,6 +19,7 @@ function AppStack() {
   useEffect(() => { void refresh(db); }, [db, refresh]);
   return <><StatusBar style={resolvedTheme === 'dark' ? 'light' : 'dark'} /><Stack screenOptions={{ headerStyle: { backgroundColor: palette.background }, headerTintColor: palette.ink, headerShadowVisible: false, contentStyle: { backgroundColor: palette.background } }}>
     <Stack.Screen name="index" options={{ headerShown: false }} />
+    <Stack.Screen name="welcome" options={{ headerShown: false }} />
     <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
     <Stack.Screen name="habits/create" options={{ title: 'New habit' }} />
     <Stack.Screen name="habits/[id]" options={{ title: 'Habit details' }} />
@@ -27,7 +29,7 @@ function AppStack() {
 
 function ThemedApp() {
   const db = useSQLiteContext();
-  return <ThemeProvider db={db}><CloudProvider><AppStack /></CloudProvider></ThemeProvider>;
+  return <ThemeProvider db={db}><ProfileProvider><CloudProvider><AppStack /></CloudProvider></ProfileProvider></ThemeProvider>;
 }
 
 export default function RootLayout() {

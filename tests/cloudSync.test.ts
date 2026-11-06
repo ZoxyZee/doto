@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { DatabaseSync } from 'node:sqlite';
-import type { SupabaseClient } from '@supabase/supabase-js';
+import type { CloudClient } from '../src/cloud/client';
 import type { SQLiteDatabase } from 'expo-sqlite';
 import { afterEach, expect, test, vi } from 'vitest';
 import { migrateDatabase } from '../src/database/migrations';
@@ -8,6 +8,13 @@ import type { Habit } from '../src/types/habit';
 
 vi.mock('expo-crypto', () => ({ randomUUID }));
 vi.mock('@/notifications/reminders', () => ({ cancelReminder: async () => undefined }));
+vi.mock('@/cloud/api', () => ({ workerRequest: async (cloud: FakeCloud, path: string, payload: Record<string, unknown>) => {
+  if (path === 'api/activity') return { ok: true };
+  const name = path === 'api/sync/apply' ? 'doto_apply_operation' : 'doto_pull_changes';
+  const { data, error } = await cloud.rpc(name, payload);
+  if (error) throw error;
+  return data;
+} }));
 
 const { clearAccountData, pendingChanges, syncDatabase } = await import('../src/cloud/sync');
 const opened: DatabaseSync[] = [];
@@ -66,6 +73,7 @@ async function queueHabit(db: SQLiteDatabase, value: Habit, operationType: strin
 }
 
 class FakeCloud {
+  updateName = async () => undefined;
   rows = new Map<string, Habit>();
   completions = new Map<string, { id: string; habit_id: string; completion_date: string; is_completed: number; version: number }>();
   receipts = new Map<string, unknown>();
@@ -121,10 +129,10 @@ test('uploads a guest habit, then downloads it on another device', async () => {
   const value = habit();
   await queueHabit(first, value, 'create');
 
-  expect(await syncDatabase(first, cloud as unknown as SupabaseClient, owner)).toEqual({ pending: 0, received: 1 });
+  expect(await syncDatabase(first, cloud as unknown as CloudClient, owner)).toEqual({ pending: 0, received: 1 });
   expect(await pendingChanges(first)).toBe(0);
   expect((await first.getFirstAsync<Habit>('SELECT * FROM habits WHERE id = ?', value.id))?.owner_id).toBe(owner);
-  expect(await syncDatabase(second, cloud as unknown as SupabaseClient, owner)).toEqual({ pending: 0, received: 1 });
+  expect(await syncDatabase(second, cloud as unknown as CloudClient, owner)).toEqual({ pending: 0, received: 1 });
   expect((await second.getFirstAsync<Habit>('SELECT * FROM habits WHERE id = ?', value.id))?.name).toBe('Read');
 });
 
@@ -135,10 +143,10 @@ test('retries an acknowledged operation without duplicating it', async () => {
   await queueHabit(db, value, 'create');
   cloud.failAfterCommitOnce = true;
 
-  await expect(syncDatabase(db, cloud as unknown as SupabaseClient, owner)).rejects.toThrow('Connection dropped');
+  await expect(syncDatabase(db, cloud as unknown as CloudClient, owner)).rejects.toThrow('Connection dropped');
   expect(await pendingChanges(db)).toBe(1);
   expect(cloud.changes).toHaveLength(1);
-  expect(await syncDatabase(db, cloud as unknown as SupabaseClient, owner, true)).toEqual({ pending: 0, received: 1 });
+  expect(await syncDatabase(db, cloud as unknown as CloudClient, owner, true)).toEqual({ pending: 0, received: 1 });
   expect(cloud.changes).toHaveLength(1);
 });
 
@@ -147,14 +155,14 @@ test('rebases a local edit on a newer cloud version', async () => {
   const cloud = new FakeCloud();
   const value = habit();
   await queueHabit(db, value, 'create');
-  await syncDatabase(db, cloud as unknown as SupabaseClient, owner);
+  await syncDatabase(db, cloud as unknown as CloudClient, owner);
   const localEdit = { ...value, name: 'Read 20 minutes', version: 1, local_revision: 2 };
   await queueHabit(db, localEdit, 'update');
   const remote = { ...cloud.rows.get(value.id)!, name: 'Read 5 minutes', version: 2 };
   cloud.rows.set(value.id, remote);
   cloud.changes.push({ revision: 2, entity_type: 'habit', entity_id: value.id, payload: remote, version: 2 });
 
-  expect(await syncDatabase(db, cloud as unknown as SupabaseClient, owner)).toEqual({ pending: 0, received: 2 });
+  expect(await syncDatabase(db, cloud as unknown as CloudClient, owner)).toEqual({ pending: 0, received: 2 });
   expect(cloud.rows.get(value.id)?.name).toBe('Read 20 minutes');
   expect((await db.getFirstAsync<Habit>('SELECT * FROM habits WHERE id = ?', value.id))?.version).toBe(3);
 });
@@ -168,7 +176,7 @@ test('preserves both habits when a guest ID collides with cloud data', async () 
   cloud.rows.set(value.id, remote);
   cloud.changes.push({ revision: 1, entity_type: 'habit', entity_id: value.id, payload: remote, version: 1 });
 
-  expect(await syncDatabase(db, cloud as unknown as SupabaseClient, owner)).toEqual({ pending: 0, received: 2 });
+  expect(await syncDatabase(db, cloud as unknown as CloudClient, owner)).toEqual({ pending: 0, received: 2 });
   const rows = await db.getAllAsync<Habit>('SELECT * FROM habits ORDER BY name');
   expect(rows.map((row) => row.name)).toEqual(['Existing cloud habit', 'Read']);
   expect(new Set(rows.map((row) => row.id)).size).toBe(2);
@@ -179,13 +187,13 @@ test('a remote deletion wins over an unsynced local edit', async () => {
   const cloud = new FakeCloud();
   const value = habit();
   await queueHabit(db, value, 'create');
-  await syncDatabase(db, cloud as unknown as SupabaseClient, owner);
+  await syncDatabase(db, cloud as unknown as CloudClient, owner);
   await queueHabit(db, { ...value, name: 'Local edit' }, 'update');
   const remote = { ...cloud.rows.get(value.id)!, deleted_at: '2026-11-06T01:00:00.000Z', version: 2 };
   cloud.rows.set(value.id, remote);
   cloud.changes.push({ revision: 2, entity_type: 'habit', entity_id: value.id, payload: remote, version: 2 });
 
-  await syncDatabase(db, cloud as unknown as SupabaseClient, owner);
+  await syncDatabase(db, cloud as unknown as CloudClient, owner);
   expect(await pendingChanges(db)).toBe(0);
   expect((await db.getFirstAsync<Habit>('SELECT * FROM habits WHERE id = ?', value.id))?.deleted_at).toBe(remote.deleted_at);
 });
@@ -195,7 +203,7 @@ test('completion conflict adopts the cloud ID and keeps the latest local choice'
   const cloud = new FakeCloud();
   const value = habit();
   await queueHabit(db, value, 'create');
-  await syncDatabase(db, cloud as unknown as SupabaseClient, owner);
+  await syncDatabase(db, cloud as unknown as CloudClient, owner);
   const localId = randomUUID();
   const remoteId = randomUUID();
   const date = '2026-11-06';
@@ -218,7 +226,7 @@ test('completion conflict adopts the cloud ID and keeps the latest local choice'
   cloud.completions.set(`${value.id}:${date}`, remote);
   cloud.changes.push({ revision: 2, entity_type: 'completion', entity_id: remoteId, payload: remote, version: 1 });
 
-  await syncDatabase(db, cloud as unknown as SupabaseClient, owner);
+  await syncDatabase(db, cloud as unknown as CloudClient, owner);
   const merged = await db.getFirstAsync<typeof completion>('SELECT * FROM habit_completions WHERE habit_id = ? AND completion_date = ?', value.id, date);
   expect(merged?.id).toBe(remoteId);
   expect(merged?.is_completed).toBe(1);

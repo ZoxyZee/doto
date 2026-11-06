@@ -1,9 +1,10 @@
 import * as Crypto from 'expo-crypto';
-import type { SupabaseClient } from '@supabase/supabase-js';
+import type { CloudClient } from '@/cloud/client';
 import type { SQLiteDatabase } from 'expo-sqlite';
 import { refreshTodaySnapshot } from '@/database/completionRepository';
 import { cancelReminder } from '@/notifications/reminders';
 import type { Habit } from '@/types/habit';
+import { workerRequest } from '@/cloud/api';
 
 type Completion = {
   id: string; habit_id: string; completion_date: string; completion_timezone: string;
@@ -152,20 +153,18 @@ async function upsertCompletion(db: SQLiteDatabase, completion: Completion): Pro
   );
 }
 
-async function pushOne(db: SQLiteDatabase, cloud: SupabaseClient, userId: string, operationId: string): Promise<void> {
+async function pushOne(db: SQLiteDatabase, cloud: CloudClient, userId: string, operationId: string): Promise<void> {
   for (let attempt = 0; attempt < 3; attempt++) {
     const operation = await db.getFirstAsync<Outbox>('SELECT * FROM sync_outbox WHERE operation_id = ?', operationId);
     if (!operation) return;
     const baseVersion = await getVersion(db, operation);
-    const { data, error } = await cloud.rpc('doto_apply_operation', {
+    const result = await workerRequest<ApplyResult>(cloud, 'api/sync/apply', {
       p_operation_id: operation.operation_id,
       p_entity_type: operation.entity_type,
       p_entity_id: operation.entity_id,
       p_base_version: baseVersion,
       p_payload: JSON.parse(operation.payload),
     });
-    if (error) throw error;
-    const result = data as ApplyResult;
     if (result.status === 'applied' && typeof result.version === 'number') {
       await db.withExclusiveTransactionAsync(async (tx) => {
         await updateVersion(tx, operation, result.version!, userId);
@@ -200,15 +199,13 @@ async function pushOne(db: SQLiteDatabase, cloud: SupabaseClient, userId: string
   throw new Error('Cloud changed during sync. Please retry.');
 }
 
-async function pullChanges(db: SQLiteDatabase, cloud: SupabaseClient, userId: string): Promise<number> {
+async function pullChanges(db: SQLiteDatabase, cloud: CloudClient, userId: string): Promise<number> {
   const cursorRow = await db.getFirstAsync<{ value: string }>("SELECT value FROM sync_metadata WHERE key = 'cloud_cursor'");
   let cursor = Number(cursorRow?.value ?? '0');
   if (!Number.isSafeInteger(cursor) || cursor < 0) throw new Error('Local sync cursor is invalid.');
   let received = 0;
   for (let page = 0; page < 20; page++) {
-    const { data, error } = await cloud.rpc('doto_pull_changes', { p_after: cursor, p_limit: 100 });
-    if (error) throw error;
-    const changes = data as Change[];
+    const changes = await workerRequest<Change[]>(cloud, 'api/sync/pull', { p_after: cursor, p_limit: 100 });
     if (!Array.isArray(changes)) throw new Error('Invalid cloud changes response.');
     if (changes.length === 0) break;
     await db.withExclusiveTransactionAsync(async (tx) => {
@@ -239,7 +236,7 @@ async function pullChanges(db: SQLiteDatabase, cloud: SupabaseClient, userId: st
   return received;
 }
 
-export async function syncDatabase(db: SQLiteDatabase, cloud: SupabaseClient, userId: string, force = false): Promise<{ pending: number; received: number }> {
+export async function syncDatabase(db: SQLiteDatabase, cloud: CloudClient, userId: string, force = false): Promise<{ pending: number; received: number }> {
   const owner = await db.getFirstAsync<{ value: string }>("SELECT value FROM sync_metadata WHERE key = 'cloud_owner'");
   if (owner?.value !== userId) throw new Error('Sign in with the account linked to this device.');
   for (let batch = 0; batch < 20; batch++) {
@@ -266,6 +263,22 @@ export async function syncDatabase(db: SQLiteDatabase, cloud: SupabaseClient, us
   const pending = await pendingChanges(db);
   if (pending > 0) return { pending, received: 0 };
   const received = await pullChanges(db, cloud, userId);
+  const today = new Date().toISOString().slice(0, 10);
+  const lastPing = await db.getFirstAsync<{ value: string }>("SELECT value FROM sync_metadata WHERE key = 'activity_ping_day'");
+  if (lastPing?.value !== today) {
+    try {
+      await workerRequest(cloud, 'api/activity', {});
+      await db.runAsync("INSERT INTO sync_metadata (key, value) VALUES ('activity_ping_day', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value", today);
+    } catch { /* Activity metrics must never block habit sync. */ }
+  }
+  const profile = await db.getFirstAsync<{ value: string }>("SELECT value FROM sync_metadata WHERE key = 'profile_name'");
+  const savedProfile = await db.getFirstAsync<{ value: string }>("SELECT value FROM sync_metadata WHERE key = 'profile_name_synced'");
+  if (profile?.value && profile.value !== savedProfile?.value) {
+    try {
+      await cloud.updateName(profile.value);
+      await db.runAsync("INSERT INTO sync_metadata (key, value) VALUES ('profile_name_synced', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value", profile.value);
+    } catch { /* Retry name metadata on the next successful sync. */ }
+  }
   return { pending: 0, received };
 }
 
@@ -274,6 +287,6 @@ export async function clearAccountData(db: SQLiteDatabase): Promise<void> {
   await Promise.all(rows.map((row) => cancelReminder(row.id)));
   await db.withExclusiveTransactionAsync(async (tx) => {
     await tx.execAsync('DELETE FROM habit_completions; DELETE FROM habits; DELETE FROM daily_snapshots; DELETE FROM sync_outbox;');
-    await tx.runAsync("DELETE FROM sync_metadata WHERE key IN ('cloud_owner', 'cloud_cursor', 'cloud_last_sync')");
+    await tx.runAsync("DELETE FROM sync_metadata WHERE key IN ('cloud_owner', 'cloud_cursor', 'cloud_last_sync', 'activity_ping_day', 'profile_name', 'profile_name_synced')");
   });
 }

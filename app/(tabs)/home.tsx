@@ -9,10 +9,12 @@ import { Screen } from '@/components/Screen';
 import { localDate } from '@/domain/habitRules';
 import { useHabitStore } from '@/store/useHabitStore';
 import { type, usePalette } from '@/theme/colors';
+import { useProfile } from '@/profile/ProfileProvider';
 
 export default function Home() {
   const db = useSQLiteContext();
   const palette = usePalette();
+  const { name } = useProfile();
   const habits = useHabitStore((state) => state.habits);
   const loading = useHabitStore((state) => state.loading);
   const error = useHabitStore((state) => state.error);
@@ -41,7 +43,7 @@ export default function Home() {
   const message = today.requiredCount === 0 ? upcomingHabits.length ? 'Your next routine starts soon.' : 'Start with one small thing.' : today.completedCount === today.requiredCount ? 'All done for today. See you tomorrow.' : nextHabit ? `Next up: ${nextHabit.name}` : 'One step at a time.';
   return <Screen>
     <View style={styles.brandRow}><Text style={[styles.brand, { color: palette.ink }]}>doto<Text style={{ color: palette.accent }}>.</Text></Text><View style={[styles.datePill, { backgroundColor: palette.surfaceMuted }]}><Ionicons name="calendar-outline" size={15} color={palette.ink} /><Text style={[styles.date, { color: palette.ink }]}>{date}</Text></View></View>
-    <Text style={[styles.title, { color: palette.ink }]}>A little every day.</Text>
+    <Text style={[styles.title, { color: palette.ink }]}>{name ? `Keep going, ${name.split(' ')[0]}.` : 'A little every day.'}</Text>
     <Text style={[styles.subtitle, { color: palette.muted }]}>Keep the things that matter moving.</Text>
     <View style={[styles.progressCard, { backgroundColor: palette.surface }]}>
       <View style={styles.progressTop}><Text style={[styles.progressLabel, { color: palette.muted }]}>TODAY’S PROGRESS</Text><View style={[styles.progressBadge, { backgroundColor: palette.purpleSoft }]}><Text style={[styles.progressBadgeText, { color: palette.purple }]}>{Math.round(ratio * 100)}%</Text></View></View>

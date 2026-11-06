@@ -11,3 +11,9 @@ android/
 .gradle-build/
 .preview-chrome/
 artifacts/
+worker/.dev.vars*
+!worker/.dev.vars.example
+admin/dist/
+.wrangler/
+worker/.wrangler/
+.wrangler-dry-run/

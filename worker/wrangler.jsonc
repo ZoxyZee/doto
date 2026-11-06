@@ -1,0 +1,19 @@
+{
+  "$schema": "../node_modules/wrangler/config-schema.json",
+  "name": "doto-api",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-11-06",
+  "secrets": { "required": ["ADMIN_TOKEN"] },
+  "d1_databases": [{
+    "binding": "DB",
+    "database_name": "doto-data",
+    "database_id": "dec9dc3c-6baf-42bc-8b89-9626611134ad",
+    "migrations_dir": "migrations"
+  }],
+  "assets": {
+    "directory": "../admin/dist",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*"]
+  }
+}

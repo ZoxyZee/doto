@@ -4,9 +4,9 @@
 
 ## Phase 1 status
 
-Implemented: Expo Router navigation, a local SQLite database with versioned migrations, create/edit/archive/restore/delete habit flows, a native calendar picker for each habit's start date, an optional native time picker for daily local reminders, and one-tap daily completion with undo. Local mutations and their durable sync outbox operations commit in one SQLite transaction. Delete uses a tombstone so synchronization can propagate it. The app works as a local guest without configuration or network access. The source now also includes Supabase email/password sign-in, secure session storage, authenticated server RPCs, and best-effort upload/download sync. See [cloud setup](CLOUD_SETUP.md) and [environment contracts](env-contracts.md); no hosted project is configured yet.
+Implemented: Expo Router navigation, a first-launch name screen, local SQLite storage, create/edit/archive/restore/delete habits, a native start-date calendar, optional reminder time picker, and one-tap completion with undo. Local changes and durable sync outbox entries commit together. The source runs offline by default; the current preview APK enables Cloudflare Worker + D1 sync. A protected web admin dashboard is deployed. See [Worker and admin setup](WORKER_SETUP.md) and [environment contracts](env-contracts.md).
 
-The Calendar tab shows recorded activity by month. Rewards shows a count of completed steps. Reminders require notification permission; a habit with a future start date gets its first scheduled reminder on that date and is switched to a repeating daily reminder when the app next opens. Full historical daily eligibility, streaks, XP, achievements, and a store-ready release are **not implemented yet**. Cloud code has local and embedded-PostgreSQL tests, but a live Supabase deployment and physical-device test are still needed.
+The Calendar tab shows recorded activity by month. Rewards shows a count of completed steps. Reminders require notification permission; a habit with a future start date gets its first scheduled reminder on that date and is switched to a repeating daily reminder when the app next opens. Full historical daily eligibility, streaks, XP, achievements, and a store-ready release are **not implemented yet**. The Cloudflare Worker, D1, and admin website are deployed and passed a live cross-account test; the cloud APK still needs physical-device testing.
 
 ## Visual direction
 
@@ -25,7 +25,7 @@ On this Windows machine, the SDK 58 release build required Android CMake 3.31.6 
 
 ## Preview APK
 
-The installable Android preview is [`artifacts/DOTO-personal-0.1.0.apk`](artifacts/DOTO-personal-0.1.0.apk). This **offline APK** was built before cloud support was added to the source. It contains only ARM64 native code, reducing the signed APK from 92.2 MiB to 30.2 MiB. It installs on ARM64 Android phones; 32-bit ARM phones and x86 emulators are not supported by this APK. It is a release-mode APK signed with a unique local preview key, intended for direct testing rather than Play Store submission. Package ID: `com.doto.habits`; version: `0.1.0`. SHA-256: `478528D39FBF33CDDA872A2243D374FE7FF1591A115DCC87FDC7AC5BF06C1564`. A cloud-enabled APK requires a configured Supabase project and a new build. Previous debug-signed APKs cannot be updated in place with this build; uninstalling the old APK also removes its local data. See [security review](SECURITY_REVIEW.md).
+The installable Android preview is [`artifacts/DOTO-cloud-0.1.2.apk`](artifacts/DOTO-cloud-0.1.2.apk). It includes the name screen, Cloudflare sync, and a colored sync-status dot in Settings, while local SQLite still works offline. It contains only ARM64 native code and is 31.0 MiB; 32-bit ARM phones and x86 emulators are not supported. It is a release-mode APK signed with the same local preview certificate as the older `0.1.0` and `0.1.1` APKs, so Android can install it as an update over those previews without clearing app data. Package ID: `com.doto.habits`; version code: `3`. SHA-256: `B74D2C7CFBDDA195307A87729A8E017B81B9C65C8335EF536FB2AD90EF9DC320`. Earlier debug-signed builds have a different certificate and cannot be updated in place. Uninstalling erases local data. See [security review](SECURITY_REVIEW.md).
 
 ## Data and conflict rules for later phases
 
@@ -45,7 +45,7 @@ The installable Android preview is [`artifacts/DOTO-personal-0.1.0.apk`](artifac
 
 ### Cloud synchronization (Phase 3)
 
-- Each account-owned cloud row will be constrained by `auth.uid()` and RLS. The client will never supply trusted ownership. The mobile app will contain only the public Supabase URL and anon key; session credentials will use SecureStore.
+- Each cloud request carries a random device token stored in SecureStore. The Worker hashes it, looks up its D1 user, and scopes every query to that user. The client cannot supply trusted ownership.
 - The server will process operation UUIDs transactionally and idempotently. Each operation carries its base server version. A stale version produces a conflict response and the latest row, never a silent overwrite. The client will retain unsent local operations, download remote changes, and rebase explicit local edits. For a delete/edit race, deletion wins unless the user explicitly restores the item. A completion toggle conflict will reapply the user's latest local intent against the newly fetched server version with a bounded retry.
 - Downloads will use a server cursor and owner-scoped incremental ordering. Uploads will be bounded and retried with exponential backoff. Synchronization is best-effort when the app has execution time, valid authentication, and connectivity.
 - Guest records remain local until the server acknowledges them after sign-in. On ID collision with different content, the merge will preserve both records by remapping one stable ID and related references. Signing out will isolate account data from the next user.
@@ -54,7 +54,7 @@ The installable Android preview is [`artifacts/DOTO-personal-0.1.0.apk`](artifac
 
 1. **Foundation (complete):** Expo, navigation, SQLite migration, complete local habit management, transactional outbox.
 2. **Tracking (in progress):** completion and undo, today's eligibility snapshot, and recorded-activity calendar are present. Historical eligibility finalization, pure streak/XP functions, achievements, and broader tests remain.
-3. **Cloud (source implemented; deployment pending):** Supabase schema/RLS, auth, guest merge, idempotent versioned sync, reconciliation tests. A hosted project and device testing remain.
+3. **Cloud (preview deployed and built):** Cloudflare D1 schema, Worker device sessions, idempotent versioned sync, reconciliation tests, an admin website, and an ARM64 cloud APK. Physical-device testing remains.
 4. **Experience:** onboarding, more robust future-start reminder recurrence, theme, animations, settings and sync visibility.
 5. **Release:** device tests, security and performance checks, Android installable build, release documentation.
 
@@ -62,4 +62,4 @@ The installable Android preview is [`artifacts/DOTO-personal-0.1.0.apk`](artifac
 
 The main risks are history changing when habits are edited, duplicate rewards after retries, stale edits from two devices, and losing guest data during account linking. Dated snapshots, derived rewards, server-side compare-and-swap versions, and acknowledged guest migration address these respectively. SQLite outbox inserts share the write transaction so a local edit cannot commit without its future sync record.
 
-The 1 November 2026 security pass upgraded DOTO to Expo SDK 58, React Native 0.88.1, and Vitest 5. A fresh full `npm audit` reported 12 moderate advisories, with no high or critical findings. Review the remaining advisories before public release; do not apply `npm audit fix --force` without checking Expo compatibility.
+The 1 November 2026 security pass upgraded DOTO to Expo SDK 58, React Native 0.88.1, and Vitest 5. After removing the unused Supabase dependencies, a fresh audit reported 0 vulnerabilities. Re-audit before public release; do not apply `npm audit fix --force` without checking Expo compatibility.

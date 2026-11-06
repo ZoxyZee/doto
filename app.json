@@ -2,14 +2,16 @@
   "expo": {
     "name": "DOTO",
     "slug": "doto",
-    "version": "0.1.0",
+    "version": "0.1.2",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "android": {
       "package": "com.doto.habits",
+      "versionCode": 3,
       "allowBackup": false,
       "blockedPermissions": [
+        "android.permission.INTERNET",
         "android.permission.ACCESS_NETWORK_STATE",
         "android.permission.SYSTEM_ALERT_WINDOW",
         "android.permission.READ_EXTERNAL_STORAGE",
