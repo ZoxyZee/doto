@@ -1,4 +1,4 @@
-# DOTO preview security review — 6 November 2026
+# DOTO preview security review — 7 November 2026
 
 The original review was performed on 1 November 2026. The ARM64 cloud APK was built on 6 November. Its package, permissions, alignment, and signing were checked. It is a preview build, not a public release assessment. No Android device was connected for runtime testing.
 
@@ -9,7 +9,7 @@ The original review was performed on 1 November 2026. The ARM64 cloud APK was bu
 - Disabled Android Auto Backup for the local SQLite database. This improves privacy but means local habits will not restore automatically after a device reset or transfer.
 - The cloud APK permits Android internet access. Network state, legacy external storage, system overlay, and FCM receive permissions remain blocked. Local reminders retain notification, boot, wake lock, and vibration permissions. Expo Notifications still contributes launcher badge permissions.
 - Removed the unused external `doto://` link handler. The app's launcher activity remains exported as Android requires; other app components are either not exported or protected by a platform permission.
-- Upgraded to Expo SDK 58 and React Native 0.88.1, including patched Expo Router 58.0.29. Added Expo Router's required `expo-linking` peer. Upgraded Vitest to 5.0.5 to remove critical test-tool advisories. `npm run typecheck` and all six repository tests pass. The Android release build passed for arm64, 32-bit ARM, x86, and x86-64.
+- Upgraded to Expo SDK 58 and React Native 0.88.1, including patched Expo Router 58.0.29. Added Expo Router's required `expo-linking` peer. Upgraded Vitest to 5.0.5 to remove critical test-tool advisories. `npm run typecheck` and all 29 repository tests pass. The current Android release APK was built for ARM64 only.
 - Re-signed the APK with a unique 3072-bit RSA preview key. APK Signature Scheme v2 and v3 verification passed. The key and passwords are stored only under the ignored local `.build-tools/signing/` directory; back them up securely before using this identity for future updates.
 
 ## Remaining risks and limits
@@ -20,7 +20,7 @@ The original review was performed on 1 November 2026. The ARM64 cloud APK was bu
 - The new preview certificate differs from earlier debug-signed APKs. Android will not install it as an in-place update over those builds; uninstalling the older app erases its local database.
 - This preview key is not a Play Store upload key. Before a public release, use managed release credentials, re-audit dependencies, and test on a real Android device.
 
-## Cloud source added after the APK build
+## Cloud security checks
 
 - The default offline Android build blocks internet permission. A separate cloud-enabled build permits internet access and embeds only the public Worker URL. The [environment contract](env-contracts.md) rejects public secret names and invalid endpoints; `.env*` files are ignored by Git.
 - The Worker issues random per-installation device tokens. The phone stores its token in Expo SecureStore; D1 stores only its SHA-256 hash. Every sync query uses the user ID looked up from that token. The client-supplied owner ID is overwritten by the Worker.
@@ -30,8 +30,8 @@ The original review was performed on 1 November 2026. The ARM64 cloud APK was bu
 
 ## Artifact identity
 
-- Package: `com.doto.habits`, version `0.1.2`, version code `3`, ARM64
-- APK SHA-256: `B74D2C7CFBDDA195307A87729A8E017B81B9C65C8335EF536FB2AD90EF9DC320`
+- Package: `com.doto.habits`, version `0.1.9`, version code `10`, ARM64
+- APK SHA-256: `1605EF96ABB5D318131DA36B5FDA8CF40C1DD43CB17C8E080558673614F981B7`
 - Signing certificate SHA-256: `f1fd96bfd63c0bc5168157cc12063b9880a73e4d4427a5c1e92b600277d348c6`
 
 ## Cloudflare Worker and admin
@@ -39,3 +39,4 @@ The original review was performed on 1 November 2026. The ARM64 cloud APK was bu
 - Admin metrics require a separate 32+ character `ADMIN_TOKEN` set only as a Worker secret. The admin website keeps it in browser session storage; the Worker compares token hashes before querying D1. Mobile device tokens cannot access admin metrics.
 - The dashboard displays names and aggregate activity, habit, and completion counts. It does not return habit text. Activity is recorded after online sync; offline-only use is not visible.
 - The Worker, remote D1 database, and admin website are deployed at `https://doto-api.doto-197796f7.workers.dev/`. Live checks confirmed missing and wrong admin tokens are rejected, a valid admin token works, mobile tokens cannot access admin metrics, and two separate device accounts cannot read each other's changes. Test records were removed afterward. The cloud APK has been built but not tested on a physical device.
+- Tailored tips require a device session and an explicit tap. Only the habit name reaches Workers AI; the Worker stores daily request counts, while the phone caches the returned tip. Limits are 8 per user and 100 total per UTC day. Medical or high-risk habit names use the offline general tip. AI output is length-checked and may still be inaccurate; it is not live Google search or a verified source. A live non-sensitive tip request succeeded and its temporary test user was removed.

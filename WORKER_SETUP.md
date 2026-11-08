@@ -4,7 +4,6 @@ Supabase is no longer used. The Worker handles private device sessions, sync, an
 admin API; D1 stores the data; the same Worker serves the admin website. The app keeps
 SQLite as its offline-first local store. The Worker and D1 are now deployed at
 `https://doto-api.doto-197796f7.workers.dev/` on Cloudflare's Free-compatible services.
-The current APK in `artifacts/` is still the older offline build.
 
 ## 1. Authenticate and create D1
 
@@ -59,12 +58,19 @@ EXPO_PUBLIC_DOTO_CLOUD_ENABLED=true
 EXPO_PUBLIC_DOTO_API_URL=https://doto-api.doto-197796f7.workers.dev/
 ```
 
-The current `artifacts/DOTO-cloud-0.1.2.apk` was built with these values. For later
+The current `artifacts/DOTO-cloud-0.1.9.apk` was built with these values. For later
 app changes, build a new APK. Cloud-enabled builds allow internet permission; offline
 builds block it.
 The app asks for a name first. When online, it creates a private device token, keeps
 that token in Android SecureStore, and syncs pending SQLite changes. No email or
 Supabase account is required.
+
+For unfamiliar habit names, the app offers a user-triggered AI tip. The Worker uses its
+Workers AI binding; no AI API key is embedded in the APK or repository. Only the habit
+name is sent for this request, and the generated tip is cached in local SQLite. The
+Worker caps requests at 8 per device account and 100 total per UTC day. It uses a
+Workers Free model; the app keeps showing its built-in tip when AI is unavailable. This feature
+generates a short suggestion; it does not search Google or verify live sources.
 
 **Recovery limit:** The device token is currently the only proof of ownership.
 Uninstalling, clearing app data, or moving phones loses access to the cloud account.

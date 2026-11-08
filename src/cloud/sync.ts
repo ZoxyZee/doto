@@ -56,11 +56,13 @@ async function remapHabit(db: SQLiteDatabase, oldId: string): Promise<void> {
     if (!habit) throw new Error('Could not preserve the colliding habit.');
     await tx.runAsync(
       `INSERT INTO habits (id, owner_id, name, description, icon, color, created_at, updated_at,
-       archived_at, deleted_at, reminder_enabled, reminder_time, version, local_revision, created_date, created_timezone)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?)`,
+       archived_at, deleted_at, reminder_enabled, reminder_time, reminder_interval_minutes, reminder_end_time,
+       version, local_revision, created_date, created_timezone)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?)`,
       nextId, habit.owner_id, habit.name, habit.description, habit.icon, habit.color,
       habit.created_at, habit.updated_at, habit.archived_at, habit.deleted_at,
-      habit.reminder_enabled, habit.reminder_time, habit.local_revision, habit.created_date, habit.created_timezone,
+      habit.reminder_enabled, habit.reminder_time, habit.reminder_interval_minutes ?? null, habit.reminder_end_time ?? null,
+      habit.local_revision, habit.created_date, habit.created_timezone,
     );
     await tx.runAsync('UPDATE habit_completions SET habit_id = ? WHERE habit_id = ?', nextId, oldId);
     await tx.runAsync('DELETE FROM habits WHERE id = ?', oldId);
@@ -114,18 +116,21 @@ async function remoteDeleteWins(db: SQLiteDatabase, habit: Habit): Promise<void>
 async function upsertHabit(db: SQLiteDatabase, habit: Habit): Promise<void> {
   await db.runAsync(
     `INSERT INTO habits (id, owner_id, name, description, icon, color, created_at, updated_at,
-     archived_at, deleted_at, reminder_enabled, reminder_time, version, local_revision, created_date, created_timezone)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+     archived_at, deleted_at, reminder_enabled, reminder_time, reminder_interval_minutes, reminder_end_time,
+     version, local_revision, created_date, created_timezone)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(id) DO UPDATE SET owner_id = excluded.owner_id, name = excluded.name,
      description = excluded.description, icon = excluded.icon, color = excluded.color,
      created_at = excluded.created_at, updated_at = excluded.updated_at,
      archived_at = excluded.archived_at, deleted_at = excluded.deleted_at,
      reminder_enabled = excluded.reminder_enabled, reminder_time = excluded.reminder_time,
+     reminder_interval_minutes = excluded.reminder_interval_minutes, reminder_end_time = excluded.reminder_end_time,
      version = excluded.version, local_revision = excluded.local_revision,
      created_date = excluded.created_date, created_timezone = excluded.created_timezone`,
     habit.id, habit.owner_id, habit.name, habit.description, habit.icon, habit.color,
     habit.created_at, habit.updated_at, habit.archived_at, habit.deleted_at,
-    habit.reminder_enabled, habit.reminder_time, habit.version, habit.local_revision,
+    habit.reminder_enabled, habit.reminder_time, habit.reminder_interval_minutes ?? null, habit.reminder_end_time ?? null,
+    habit.version, habit.local_revision,
     habit.created_date, habit.created_timezone,
   );
 }

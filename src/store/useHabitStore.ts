@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import type { SQLiteDatabase } from 'expo-sqlite';
 import { notifyLocalChange } from '@/cloud/syncEvents';
 import { createHabit, deleteHabit, getHabit, listHabits, setHabitArchived, updateHabit } from '@/database/habitRepository';
-import { getTodayProgress, setTodayCompleted, type TodayProgress } from '@/database/completionRepository';
+import { getCurrentStreak, getTodayProgress, setTodayCompleted, type TodayProgress } from '@/database/completionRepository';
 import { cancelReminder, syncReminder } from '@/notifications/reminders';
 import type { Habit, HabitInput } from '@/types/habit';
 
@@ -12,6 +12,7 @@ type State = {
   loading: boolean;
   error: string | null;
   today: TodayProgress;
+  streak: number;
   refresh: (db: SQLiteDatabase) => Promise<void>;
   create: (db: SQLiteDatabase, input: HabitInput) => Promise<Habit>;
   update: (db: SQLiteDatabase, id: string, input: HabitInput) => Promise<void>;
@@ -26,10 +27,12 @@ function message(error: unknown): string { return error instanceof Error ? error
 export const useHabitStore = create<State>((set, get) => ({
   habits: [], archived: [], loading: true, error: null,
   today: { date: '', completedIds: [], requiredCount: 0, completedCount: 0 },
+  streak: 0,
   refresh: async (db) => {
     try {
       const [habits, archived, today] = await Promise.all([listHabits(db), listHabits(db, true), getTodayProgress(db)]);
-      set({ habits, archived, today, loading: false, error: null });
+      const streak = await getCurrentStreak(db, today);
+      set({ habits, archived, today, streak, loading: false, error: null });
       void Promise.allSettled([...habits, ...archived].map(syncReminder));
     } catch (error) { set({ loading: false, error: message(error) }); }
   },

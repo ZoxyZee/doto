@@ -47,6 +47,7 @@ function habit(id = randomUUID()): Habit {
     id, owner_id: null, name: 'Read', description: null, icon: 'book-outline', color: '#8091B5',
     created_at: '2026-11-06T00:00:00.000Z', updated_at: '2026-11-06T00:00:00.000Z',
     archived_at: null, deleted_at: null, reminder_enabled: 0, reminder_time: null,
+    reminder_interval_minutes: null, reminder_end_time: null,
     version: 0, local_revision: 1, created_date: '2026-11-06', created_timezone: 'Asia/Kolkata',
   };
 }
@@ -126,14 +127,15 @@ test('uploads a guest habit, then downloads it on another device', async () => {
   const first = await localDb();
   const second = await localDb();
   const cloud = new FakeCloud();
-  const value = habit();
+  const value = { ...habit(), reminder_enabled: 1, reminder_time: '08:30', reminder_interval_minutes: 120, reminder_end_time: '18:30' };
   await queueHabit(first, value, 'create');
 
   expect(await syncDatabase(first, cloud as unknown as CloudClient, owner)).toEqual({ pending: 0, received: 1 });
   expect(await pendingChanges(first)).toBe(0);
   expect((await first.getFirstAsync<Habit>('SELECT * FROM habits WHERE id = ?', value.id))?.owner_id).toBe(owner);
   expect(await syncDatabase(second, cloud as unknown as CloudClient, owner)).toEqual({ pending: 0, received: 1 });
-  expect((await second.getFirstAsync<Habit>('SELECT * FROM habits WHERE id = ?', value.id))?.name).toBe('Read');
+  expect(await second.getFirstAsync<Habit>('SELECT * FROM habits WHERE id = ?', value.id))
+    .toMatchObject({ name: 'Read', reminder_interval_minutes: 120, reminder_end_time: '18:30' });
 });
 
 test('retries an acknowledged operation without duplicating it', async () => {

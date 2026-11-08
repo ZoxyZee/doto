@@ -2,13 +2,18 @@
   "expo": {
     "name": "DOTO",
     "slug": "doto",
-    "version": "0.1.2",
+    "version": "0.1.9",
+    "icon": "./assets/branding/doto-app-icon.png",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "android": {
       "package": "com.doto.habits",
-      "versionCode": 3,
+      "versionCode": 10,
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/branding/doto-adaptive-foreground.png",
+        "backgroundColor": "#F2E7DF"
+      },
       "allowBackup": false,
       "blockedPermissions": [
         "android.permission.INTERNET",

@@ -5,6 +5,27 @@ import type { Habit } from '@/types/habit';
 
 export type TodayProgress = { date: string; completedIds: string[]; requiredCount: number; completedCount: number };
 
+function previousDay(day: string): string {
+  const localNoon = new Date(`${day}T12:00:00`);
+  localNoon.setDate(localNoon.getDate() - 1);
+  return localDate(localNoon);
+}
+
+export async function getCurrentStreak(db: SQLiteDatabase, today: TodayProgress): Promise<number> {
+  const achievedToday = today.requiredCount > 0 && today.completedCount === today.requiredCount;
+  let streak = achievedToday ? 1 : 0;
+  let expected = previousDay(today.date);
+  const rows = await db.getAllAsync<{ date: string }>(
+    'SELECT date FROM daily_snapshots WHERE date < ? AND goal_achieved = 1 ORDER BY date DESC', today.date,
+  );
+  for (const row of rows) {
+    if (row.date !== expected) break;
+    streak += 1;
+    expected = previousDay(expected);
+  }
+  return streak;
+}
+
 function timezone(): string { return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'; }
 
 async function eligibleIds(db: SQLiteDatabase, date: string): Promise<string[]> {

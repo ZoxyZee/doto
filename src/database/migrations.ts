@@ -63,6 +63,25 @@ const migrations: Migration[] = [
       CREATE TABLE sync_metadata (key TEXT PRIMARY KEY, value TEXT NOT NULL);
     `,
   },
+  {
+    version: 2,
+    sql: `
+      ALTER TABLE habits ADD COLUMN reminder_interval_minutes INTEGER;
+      ALTER TABLE habits ADD COLUMN reminder_end_time TEXT;
+    `,
+  },
+  {
+    version: 3,
+    sql: `
+      CREATE TABLE habit_guidance_cache (
+        name_key TEXT PRIMARY KEY,
+        tip TEXT NOT NULL,
+        benefit_one TEXT NOT NULL,
+        benefit_two TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      );
+    `,
+  },
 ];
 
 export async function migrateDatabase(db: SQLiteDatabase): Promise<void> {

@@ -50,6 +50,7 @@ beforeEach(() => {
   native = new DatabaseSync(':memory:');
   native.exec('PRAGMA foreign_keys = ON');
   native.exec(readFileSync(resolve('worker/migrations/0001_initial.sql'), 'utf8'));
+  native.exec(readFileSync(resolve('worker/migrations/0002_tip_usage.sql'), 'utf8'));
 });
 afterEach(() => native.close());
 
@@ -98,4 +99,23 @@ test('completion changes are scoped to the owning device and keep one row per da
   const collision = await worker.fetch(request(first.token, randomUUID(), randomUUID()), env());
   expect((await collision.json() as { status: string }).status).toBe('conflict');
   expect((await (await worker.fetch(post('/api/sync/pull', { p_after: 0, p_limit: 100 }, second.token), env())).json() as unknown[])).toHaveLength(0);
+});
+
+test('tailored tips require a device session and enforce a daily free-tier limit', async () => {
+  const user = await createUser();
+  let calls = 0;
+  const configured = () => ({ ...env(), AI: { run: async () => {
+    calls++;
+    return { response: 'Put your guitar by the chair and play one chord after dinner.' };
+  } } });
+  expect((await worker.fetch(post('/api/tips', { name: 'Play guitar' }), configured())).status).toBe(401);
+  expect((await worker.fetch(post('/api/tips', { name: 'A' }, user.token), configured())).status).toBe(400);
+  expect((await worker.fetch(post('/api/tips', { name: 'Take medication' }, user.token), configured())).status).toBe(422);
+  for (let i = 0; i < 8; i++) {
+    const response = await worker.fetch(post('/api/tips', { name: 'Play guitar' }, user.token), configured());
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({ tip: 'Put your guitar by the chair and play one chord after dinner.' });
+  }
+  expect((await worker.fetch(post('/api/tips', { name: 'Play guitar' }, user.token), configured())).status).toBe(429);
+  expect(calls).toBe(8);
 });

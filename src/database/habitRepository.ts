@@ -38,11 +38,13 @@ export async function createHabit(db: SQLiteDatabase, input: HabitInput): Promis
   await db.withExclusiveTransactionAsync(async (tx) => {
     await tx.runAsync(
       `INSERT INTO habits (id, owner_id, name, description, icon, color, created_at, updated_at,
-        archived_at, deleted_at, reminder_enabled, reminder_time, version, local_revision, created_date, created_timezone)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        archived_at, deleted_at, reminder_enabled, reminder_time, reminder_interval_minutes, reminder_end_time,
+        version, local_revision, created_date, created_timezone)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       habit.id, habit.owner_id, habit.name, habit.description, habit.icon, habit.color,
       habit.created_at, habit.updated_at, habit.archived_at, habit.deleted_at,
-      habit.reminder_enabled, habit.reminder_time, habit.version, habit.local_revision,
+      habit.reminder_enabled, habit.reminder_time, habit.reminder_interval_minutes, habit.reminder_end_time,
+      habit.version, habit.local_revision,
       habit.created_date, habit.created_timezone,
     );
     await enqueue(tx, habit, 'create');
@@ -59,9 +61,11 @@ export async function updateHabit(db: SQLiteDatabase, habitId: string, input: Ha
     if (!previous) throw new Error('Habit no longer exists.');
     const next: Habit = { ...previous, ...clean, updated_at: new Date().toISOString(), local_revision: previous.local_revision + 1 };
     await tx.runAsync(
-      `UPDATE habits SET name = ?, description = ?, icon = ?, color = ?, created_date = ?, reminder_enabled = ?, reminder_time = ?, updated_at = ?, local_revision = ?
+      `UPDATE habits SET name = ?, description = ?, icon = ?, color = ?, created_date = ?, reminder_enabled = ?, reminder_time = ?,
+       reminder_interval_minutes = ?, reminder_end_time = ?, updated_at = ?, local_revision = ?
        WHERE id = ?`,
-      next.name, next.description, next.icon, next.color, next.created_date, next.reminder_enabled, next.reminder_time, next.updated_at, next.local_revision, next.id,
+      next.name, next.description, next.icon, next.color, next.created_date, next.reminder_enabled, next.reminder_time,
+      next.reminder_interval_minutes, next.reminder_end_time, next.updated_at, next.local_revision, next.id,
     );
     await enqueue(tx, next, 'update');
     await refreshTodaySnapshot(tx);
