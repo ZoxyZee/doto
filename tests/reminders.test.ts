@@ -42,7 +42,9 @@ test('schedules each interval as a daily local notification with sound', async (
     [8, 30], [10, 30], [12, 30], [14, 30], [16, 30], [18, 30],
   ]);
   expect(scheduled.every((item) => item.trigger.type === 'daily' && item.content.sound === 'default')).toBe(true);
-  expect(channel).toHaveBeenCalledWith('habit-reminders-v2', expect.objectContaining({ sound: 'default' }));
+  expect(channel).toHaveBeenCalledWith('habit-reminders-v3', expect.objectContaining({ name: 'DOTO reminders', sound: 'default', lightColor: '#E98651' }));
+  expect(scheduled[0]?.content).toEqual(expect.objectContaining({ title: 'Drink water', body: 'A few sips. A small reset.', color: '#E98651' }));
+  expect(scheduled[1]?.content).toEqual(expect.objectContaining({ body: 'Pause for a little water break.' }));
 });
 
 test('editing or archiving removes old slots and the legacy single reminder', async () => {

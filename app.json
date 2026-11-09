@@ -30,7 +30,13 @@
     "plugins": [
       "expo-router",
       "expo-sqlite",
-      "expo-notifications",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/branding/doto-notification-icon.png",
+          "color": "#E98651"
+        }
+      ],
       "expo-secure-store"
     ],
     "experiments": {
