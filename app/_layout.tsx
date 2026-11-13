@@ -24,6 +24,7 @@ function AppStack() {
     <Stack.Screen name="habits/create" options={{ title: 'New habit' }} />
     <Stack.Screen name="habits/[id]" options={{ title: 'Habit details' }} />
     <Stack.Screen name="habits/edit/[id]" options={{ title: 'Edit habit' }} />
+    <Stack.Screen name="plan" options={{ title: 'Build your day' }} />
   </Stack></>;
 }
 

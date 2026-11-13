@@ -58,7 +58,7 @@ EXPO_PUBLIC_DOTO_CLOUD_ENABLED=true
 EXPO_PUBLIC_DOTO_API_URL=https://doto-api.doto-197796f7.workers.dev/
 ```
 
-The current `artifacts/DOTO-cloud-0.1.9.apk` was built with these values. For later
+The current `artifacts/DOTO-0.1.11.apk` was built with these values. For later
 app changes, build a new APK. Cloud-enabled builds allow internet permission; offline
 builds block it.
 The app asks for a name first. When online, it creates a private device token, keeps

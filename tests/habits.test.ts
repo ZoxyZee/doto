@@ -6,6 +6,7 @@ import { createHabit, deleteHabit, getHabit, listHabits, setHabitArchived, updat
 import { HABIT_COLORS, HABIT_ICONS, pickHabitIcon, validateHabit } from '../src/domain/habitRules';
 import { getHabitGuidance } from '../src/domain/habitGuidance';
 import { reminderTimes } from '../src/domain/reminderSchedule';
+import { dailyPlan } from '../src/domain/dailyPlan';
 import { getCurrentStreak, getTodayProgress, setTodayCompleted } from '../src/database/completionRepository';
 
 vi.mock('expo-crypto', () => {
@@ -77,6 +78,16 @@ describe('Phase 1 local habits', () => {
     await updateHabit(db, created.id, { ...input, name: 'Walk' });
     expect((await getHabit(db, created.id))?.name).toBe('Walk');
     expect(raw.prepare('SELECT count(*) AS count FROM sync_outbox').get()).toMatchObject({ count: 2 });
+  });
+
+  it('removes a planned time without deleting the habit or its completion', async () => {
+    const habit = await createHabit(db, { ...input, created_date: '2020-01-01', reminder_enabled: 1, reminder_time: '08:30' });
+    await setTodayCompleted(db, habit.id, true);
+    await updateHabit(db, habit.id, { ...habit, reminder_enabled: 0, reminder_time: null });
+    const saved = await getHabit(db, habit.id);
+    expect(saved).toMatchObject({ id: habit.id, reminder_enabled: 0, reminder_time: null });
+    expect((await getTodayProgress(db)).completedIds).toContain(habit.id);
+    expect(dailyPlan([saved!], '2026-11-13').untimed).toHaveLength(1);
   });
 
   it('saves a future start date and reminder time, then updates eligibility when edited', async () => {

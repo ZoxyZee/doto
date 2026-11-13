@@ -1,6 +1,6 @@
-# DOTO preview security review — 7 November 2026
+# DOTO preview security review â€” 13 November 2026
 
-The original review was performed on 1 November 2026. The ARM64 cloud APK was built on 6 November. Its package, permissions, alignment, and signing were checked. It is a preview build, not a public release assessment. No Android device was connected for runtime testing.
+The original review was performed on 1 November 2026. The current ARM64 cloud-enabled APK was built on 13 November. Its package, permissions, alignment, and signing were checked. It is a preview build, not a public release assessment. No Android device was connected for runtime testing.
 
 ## Checks and changes
 
@@ -9,7 +9,7 @@ The original review was performed on 1 November 2026. The ARM64 cloud APK was bu
 - Disabled Android Auto Backup for the local SQLite database. This improves privacy but means local habits will not restore automatically after a device reset or transfer.
 - The cloud APK permits Android internet access. Network state, legacy external storage, system overlay, and FCM receive permissions remain blocked. Local reminders retain notification, boot, wake lock, and vibration permissions. Expo Notifications still contributes launcher badge permissions.
 - Removed the unused external `doto://` link handler. The app's launcher activity remains exported as Android requires; other app components are either not exported or protected by a platform permission.
-- Upgraded to Expo SDK 58 and React Native 0.88.1, including patched Expo Router 58.0.29. Added Expo Router's required `expo-linking` peer. Upgraded Vitest to 5.0.5 to remove critical test-tool advisories. `npm run typecheck` and all 29 repository tests pass. The current Android release APK was built for ARM64 only.
+- Upgraded to Expo SDK 58 and React Native 0.88.1, including patched Expo Router 58.0.29. Added Expo Router's required `expo-linking` peer. Upgraded Vitest to 5.0.5 to remove critical test-tool advisories. `npm run typecheck` and all 31 repository tests pass. The current Android release APK was built for ARM64 only.
 - Re-signed the APK with a unique 3072-bit RSA preview key. APK Signature Scheme v2 and v3 verification passed. The key and passwords are stored only under the ignored local `.build-tools/signing/` directory; back them up securely before using this identity for future updates.
 
 ## Remaining risks and limits
@@ -30,8 +30,8 @@ The original review was performed on 1 November 2026. The ARM64 cloud APK was bu
 
 ## Artifact identity
 
-- Package: `com.doto.habits`, version `0.1.9`, version code `10`, ARM64
-- APK SHA-256: `1605EF96ABB5D318131DA36B5FDA8CF40C1DD43CB17C8E080558673614F981B7`
+- Package: `com.doto.habits`, version `0.1.11`, version code `12`, ARM64
+- APK SHA-256: `1BACCD449A975314017B2C2A699CEE9D190FA40EB9B5AB29DCDF3EDEDE84BCD9`
 - Signing certificate SHA-256: `f1fd96bfd63c0bc5168157cc12063b9880a73e4d4427a5c1e92b600277d348c6`
 
 ## Cloudflare Worker and admin
