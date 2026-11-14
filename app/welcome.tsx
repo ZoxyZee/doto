@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Image, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useProfile } from '@/profile/ProfileProvider';
 import { type, usePalette } from '@/theme/colors';
@@ -28,7 +28,7 @@ export default function Welcome() {
     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.container}>
       <View style={styles.brandRow}><Text style={[styles.brand, { color: palette.ink }]}>doto<Text style={{ color: palette.accent }}>.</Text></Text><Text style={[styles.step, { color: palette.muted }]}>01 / 01</Text></View>
       <View style={styles.content}>
-        <View style={[styles.art, { backgroundColor: palette.surface }]}><View style={[styles.orbit, { borderColor: palette.line }]} /><View style={[styles.orbitSmall, { borderColor: palette.accent }]} /><Text style={[styles.artMark, { color: palette.accent }]}>✳</Text></View>
+        <View style={[styles.art, { backgroundColor: palette.surfaceMuted }]}><Image source={require('../assets/branding/doto-seated-mascot.png')} style={styles.mascot} resizeMode="contain" accessibilityLabel="DOTO mascot sitting and smiling" /></View>
         <Text style={[styles.overline, { color: palette.purple }]}>LET'S BEGIN</Text>
         <Text style={[styles.title, { color: palette.ink }]}>What should we{`\n`}call you?</Text>
         <Text style={[styles.subtitle, { color: palette.muted }]}>A little more personal from the very first step.</Text>
@@ -46,10 +46,8 @@ const styles = StyleSheet.create({
   brandRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   brand: { fontFamily: type.bold, fontSize: 28, letterSpacing: -1.3 }, step: { fontFamily: type.medium, fontSize: 12 },
   content: { flex: 1, justifyContent: 'center' },
-  art: { width: 132, height: 132, borderRadius: 38, justifyContent: 'center', alignItems: 'center', overflow: 'hidden', marginBottom: 36 },
-  orbit: { width: 144, height: 144, borderRadius: 72, borderWidth: 1, position: 'absolute', top: 20, left: 24 },
-  orbitSmall: { width: 74, height: 74, borderRadius: 37, borderWidth: 2, position: 'absolute', top: -12, left: -17 },
-  artMark: { fontSize: 52, lineHeight: 72 }, overline: { fontFamily: type.bold, fontSize: 11, letterSpacing: 2 },
+  art: { width: 154, height: 154, borderRadius: 38, justifyContent: 'center', alignItems: 'center', overflow: 'hidden', marginBottom: 24 },
+  mascot: { width: 150, height: 150 }, overline: { fontFamily: type.bold, fontSize: 11, letterSpacing: 2 },
   title: { fontFamily: type.display, fontSize: 42, lineHeight: 48, letterSpacing: -1.4, marginTop: 15 },
   subtitle: { fontFamily: type.body, fontSize: 15, lineHeight: 22, marginTop: 15, marginBottom: 42 },
   label: { fontFamily: type.bold, fontSize: 11, letterSpacing: 1.6, marginBottom: 11 },

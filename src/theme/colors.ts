@@ -3,18 +3,18 @@ import { useColorScheme } from 'react-native';
 import type { SQLiteDatabase } from 'expo-sqlite';
 
 const light = {
-  background: '#F1ECE5', surface: '#FFFCF8', surfaceMuted: '#F8F2EB',
-  ink: '#292622', muted: '#716B64', purple: '#A34F2E', purpleSoft: '#F8E8DC',
-  line: '#E3DBD2', danger: '#A63E3C', accent: '#F59A6A',
-  progressTrack: '#E7DED4', tab: '#252522', tabInactive: '#BBB3AA',
-  inverse: '#252522', onPrimary: '#FFFFFF',
+  background: '#F7F1EC', surface: '#FFFCFA', surfaceMuted: '#F0E9FA',
+  ink: '#241D29', muted: '#695E6C', purple: '#6538A1', purpleSoft: '#EEE3FC',
+  line: '#E5DCE4', danger: '#AD3950', accent: '#FF956B',
+  progressTrack: '#E8E0EA', tab: '#241D29', tabInactive: '#C6B9CC',
+  inverse: '#241D29', onPrimary: '#FFFFFF',
 };
 const dark = {
-  background: '#1D1C1A', surface: '#2B2926', surfaceMuted: '#34302B',
-  ink: '#F7F2EB', muted: '#BDB3A8', purple: '#F2B38D', purpleSoft: '#48352B',
-  line: '#48413D', danger: '#FFAAA4', accent: '#FFAE7D',
-  progressTrack: '#51473F', tab: '#141413', tabInactive: '#A9A39B',
-  inverse: '#292622', onPrimary: '#292622',
+  background: '#19151E', surface: '#29232F', surfaceMuted: '#342A41',
+  ink: '#FAF5FB', muted: '#C7BBCB', purple: '#C9A8FA', purpleSoft: '#423354',
+  line: '#4B3E51', danger: '#FFAAA8', accent: '#FFAA82',
+  progressTrack: '#55435F', tab: '#100D14', tabInactive: '#AD9DB6',
+  inverse: '#241D29', onPrimary: '#241D29',
 };
 
 export type Palette = typeof light;

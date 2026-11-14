@@ -1,6 +1,6 @@
-# DOTO preview security review â€” 13 November 2026
+# DOTO preview security review â€” 14 November 2026
 
-The original review was performed on 1 November 2026. The current ARM64 cloud-enabled APK was built on 13 November. Its package, permissions, alignment, and signing were checked. It is a preview build, not a public release assessment. No Android device was connected for runtime testing.
+The original review was performed on 1 November 2026. The current ARM64 cloud-enabled APK was built on 14 November. Its package, permissions, alignment, and signing were checked. It is a preview build, not a public release assessment. No Android device was connected for runtime testing.
 
 ## Checks and changes
 
@@ -30,8 +30,8 @@ The original review was performed on 1 November 2026. The current ARM64 cloud-en
 
 ## Artifact identity
 
-- Package: `com.doto.habits`, version `0.1.11`, version code `12`, ARM64
-- APK SHA-256: `1BACCD449A975314017B2C2A699CEE9D190FA40EB9B5AB29DCDF3EDEDE84BCD9`
+- Package: `com.doto.habits`, version `0.1.13`, version code `14`, ARM64
+- APK SHA-256: `39040289A463D3C94ACF286448C169ED7762C031670ABC5A805C1CE9B459F87B`
 - Signing certificate SHA-256: `f1fd96bfd63c0bc5168157cc12063b9880a73e4d4427a5c1e92b600277d348c6`
 
 ## Cloudflare Worker and admin
